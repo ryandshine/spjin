@@ -28,7 +28,9 @@ services:
       STIRLING_ENGINE_SHARED_SECRET: ${PDFIN_ENGINE_SECRET:?set in Dokploy env}
       AIENGINE_MODELS_PROVIDER: "ollama"
       AIENGINE_MODELS_SMARTMODEL: ${PDFIN_AI_MODEL:-gemma4:cloud}
-      AIENGINE_MODELS_FASTMODEL: ${PDFIN_AI_MODEL:-gemma4:cloud}
+      # Fast model drives the chat router (NativeOutput JSON). Ollama only enforces JSON schema on LOCAL models;
+      # cloud models answered with bare words -> "Exceeded maximum output retries". qwen2.5:3b scored 8/8 on the real router prompt.
+      AIENGINE_MODELS_FASTMODEL: ${PDFIN_AI_FAST_MODEL:-qwen2.5:3b}
       AIENGINE_MODELS_BASEURL: "http://host.docker.internal:11434/v1"
       AIENGINE_RAG_EMBEDDINGPROVIDER: "ollama"
       AIENGINE_RAG_EMBEDDINGMODEL: "bge-m3"   # multilingual (Bahasa Indonesia), local in Ollama
