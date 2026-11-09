@@ -21,7 +21,7 @@ services:
       SECURITY_XFRAMEOPTIONS: "DENY"
       # --- AI Engine: ON (approved by owner 2026-11-09) ---
       # Chat model = gemma4:cloud via host Ollama -> runs on Ollama Cloud (prompts/document text leave this server).
-      # Embeddings = nomic-embed-text, runs locally in Ollama.
+      # Embeddings = bge-m3 (multilingual), runs locally in Ollama.
       AIENGINE_ENABLED: "true"
       AIENGINE_MODE: "SELF_HOSTED"
       AIENGINE_URL: "http://stirling-pdf-engine:5001"
@@ -31,7 +31,7 @@ services:
       AIENGINE_MODELS_FASTMODEL: ${PDFIN_AI_MODEL:-gemma4:cloud}
       AIENGINE_MODELS_BASEURL: "http://host.docker.internal:11434/v1"
       AIENGINE_RAG_EMBEDDINGPROVIDER: "ollama"
-      AIENGINE_RAG_EMBEDDINGMODEL: "nomic-embed-text"
+      AIENGINE_RAG_EMBEDDINGMODEL: "bge-m3"   # multilingual (Bahasa Indonesia), local in Ollama
       AIENGINE_RAG_EMBEDDINGBASEURL: "http://host.docker.internal:11434/v1"
       # --- telemetry / risky features OFF ---
       SYSTEM_ENABLEANALYTICS: "false"

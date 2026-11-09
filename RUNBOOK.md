@@ -42,11 +42,16 @@ Skrip ini membuat backup pengaman dulu, meminta konfirmasi `RESTORE`, lalu mengg
 1. Dokploy → Environment → kembalikan `STIRLING_VERSION=<versi lama>` → Deploy.
 2. Bila DB sudah dimigrasi oleh versi baru dan versi lama gagal start, restore arsip dari langkah 4.2 (`scripts/restore.sh`).
 
+## 5b. Bahasa OCR
+Bawaan image: eng, deu, fra, por, chi_sim. Ditambahkan 2026-11-09: **ind** (`ind.traineddata` dari github.com/tesseract-ocr/tessdata),
+disimpan di volume `pdfin-tessdata` (`/usr/share/tessdata`) dan otomatis disalin ke folder Tesseract setiap container start.
+Menambah bahasa lain: `docker cp <lang>.traineddata <container>:/usr/share/tessdata/`, lalu restart container.
+
 ## 6. Pemeliharaan rutin
 - Bulanan: cek rilis & update; uji restore ke project uji terpisah tiap kuartal.
 - Pantau `docker stats`, log gagal login `/logs/invalid-auths.log` (bisa dipakai Fail2Ban).
 - Analytics, URL-to-PDF: **OFF**.
 - AI Engine: **ON** sejak 2026-11-09, disetujui pemilik. Container `stirling-pdf-engine` (port 5001 internal, butuh secret `PDFIN_ENGINE_SECRET`).
-  Model chat `gemma4:cloud` lewat Ollama host berjalan di **Ollama Cloud**, jadi isi dokumen yang ditanyakan ke AI keluar dari server.
-  Embedding `nomic-embed-text` berjalan lokal. Untuk mematikan AI: set `AIENGINE_ENABLED: "false"` lalu Deploy.
+  Model chat `gpt-oss:20b-cloud` (env `PDFIN_AI_MODEL`; gemma4 gagal format JSON) lewat Ollama host berjalan di **Ollama Cloud**, jadi isi dokumen yang ditanyakan ke AI keluar dari server.
+  Embedding `bge-m3` (multibahasa, mendukung Bahasa Indonesia) berjalan lokal. Untuk mematikan AI: set `AIENGINE_ENABLED: "false"` lalu Deploy.
   Ganti model: Dokploy env `PDFIN_AI_MODEL=<model ollama>`.
