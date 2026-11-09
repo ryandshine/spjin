@@ -51,7 +51,5 @@ Menambah bahasa lain: `docker cp <lang>.traineddata <container>:/usr/share/tessd
 - Bulanan: cek rilis & update; uji restore ke project uji terpisah tiap kuartal.
 - Pantau `docker stats`, log gagal login `/logs/invalid-auths.log` (bisa dipakai Fail2Ban).
 - Analytics, URL-to-PDF: **OFF**.
-- AI Engine: **ON** sejak 2026-11-09, disetujui pemilik. Container `stirling-pdf-engine` (port 5001 internal, butuh secret `PDFIN_ENGINE_SECRET`).
-  Model chat `gpt-oss:20b-cloud` (env `PDFIN_AI_MODEL`; gemma4 gagal format JSON) lewat Ollama host berjalan di **Ollama Cloud**, jadi isi dokumen yang ditanyakan ke AI keluar dari server.
-  Embedding `bge-m3` (multibahasa, mendukung Bahasa Indonesia) berjalan lokal. Untuk mematikan AI: set `AIENGINE_ENABLED: "false"` lalu Deploy.
-  Ganti model: Dokploy env `PDFIN_AI_MODEL=<model ollama>`.
+- AI Engine: **OFF** sejak 2026-11-10 (keputusan pemilik). Konfigurasi AI terakhir yang berfungsi ada di commit `9b17235`:
+  chat `gpt-oss:20b-cloud` (Ollama Cloud), router `qwen2.5:3b` lokal, embedding `bge-m3` lokal. Volume `pdfin-engine-data` tidak dihapus.
