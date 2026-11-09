@@ -1,0 +1,69 @@
+# PDFin — Stirling-PDF (official image) for Dokploy (Docker Compose)
+# Source of truth: https://docs.stirlingpdf.com/Server/Install/Docker/
+# Domain/HTTPS are attached by Dokploy's Domains tab (Traefik labels + dokploy-network injected by Dokploy).
+# Secrets come from Dokploy "Environment" (.env) — never commit them.
+services:
+  stirling-pdf:
+    # Pinned to the version that `latest` resolved to at install time (2026-11-09) for reproducible rollback.
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:${STIRLING_VERSION:-3.3.0}
+    restart: unless-stopped
+    # Internal only — no host port published. Traefik reaches it over dokploy-network.
+    expose:
+      - "8080"
+    environment:
+      # --- Authentication (login mandatory, no anonymous access) ---
+      SECURITY_ENABLELOGIN: "true"
+      SECURITY_LOGINMETHOD: "normal"
+      SECURITY_INITIALLOGIN_USERNAME: ${PDFIN_ADMIN_USERNAME:?set in Dokploy env}
+      SECURITY_INITIALLOGIN_PASSWORD: ${PDFIN_ADMIN_PASSWORD:?set in Dokploy env}
+      SECURITY_LOGINATTEMPTCOUNT: "5"
+      SECURITY_LOGINRESETTIMEMINUTES: "120"
+      SECURITY_XFRAMEOPTIONS: "DENY"
+      # --- AI / telemetry / risky features OFF (needs explicit approval to change) ---
+      AIENGINE_ENABLED: "false"
+      SYSTEM_ENABLEANALYTICS: "false"
+      SYSTEM_ENABLEPOSTHOG: "false"
+      SYSTEM_ENABLESCARF: "false"
+      SYSTEM_ENABLEURLTOPDF: "false"
+      SYSTEM_GOOGLEVISIBILITY: "false"
+      SYSTEM_SHOWUPDATEONLYADMIN: "true"
+      # --- Public URL behind Traefik ---
+      SYSTEM_BACKENDURL: "https://pdfin.ditpps.com"
+      SYSTEM_FRONTENDURL: "https://pdfin.ditpps.com"
+      SYSTEM_DEFAULTLOCALE: "id-ID"
+      SERVER_FORWARDHEADERSSTRATEGY: "native"
+      # --- Runtime ---
+      PUID: "1000"
+      PGID: "1000"
+      UMASK: "022"
+      JAVA_CUSTOM_OPTS: "-XX:MaxRAMPercentage=70"
+    volumes:
+      - pdfin-configs:/configs          # settings.yml, H2 database + backup/db, keys
+      - pdfin-storage:/storage          # server-side user file storage
+      - pdfin-logs:/logs                # info.log, invalid-auths.log
+      - pdfin-customfiles:/customFiles  # branding/static, signatures
+      - pdfin-pipeline:/pipeline        # watchedFolders / finishedFolders
+      - pdfin-tessdata:/usr/share/tessdata  # extra OCR languages (persist across recreate)
+    mem_limit: 4g
+    mem_reservation: 1g
+    cpus: 4.0
+    pids_limit: 2048
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs --max-time 10 http://localhost:8080/api/v1/info/status || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  pdfin-configs:
+  pdfin-storage:
+  pdfin-logs:
+  pdfin-customfiles:
+  pdfin-pipeline:
+  pdfin-tessdata:
