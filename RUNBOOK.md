@@ -45,4 +45,8 @@ Skrip ini membuat backup pengaman dulu, meminta konfirmasi `RESTORE`, lalu mengg
 ## 6. Pemeliharaan rutin
 - Bulanan: cek rilis & update; uji restore ke project uji terpisah tiap kuartal.
 - Pantau `docker stats`, log gagal login `/logs/invalid-auths.log` (bisa dipakai Fail2Ban).
-- AI Engine, analytics, URL-to-PDF: **OFF**. Menyalakannya perlu persetujuan.
+- Analytics, URL-to-PDF: **OFF**.
+- AI Engine: **ON** sejak 2026-11-09, disetujui pemilik. Container `stirling-pdf-engine` (port 5001 internal, butuh secret `PDFIN_ENGINE_SECRET`).
+  Model chat `gemma4:cloud` lewat Ollama host berjalan di **Ollama Cloud**, jadi isi dokumen yang ditanyakan ke AI keluar dari server.
+  Embedding `nomic-embed-text` berjalan lokal. Untuk mematikan AI: set `AIENGINE_ENABLED: "false"` lalu Deploy.
+  Ganti model: Dokploy env `PDFIN_AI_MODEL=<model ollama>`.

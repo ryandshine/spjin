@@ -19,8 +19,21 @@ services:
       SECURITY_LOGINATTEMPTCOUNT: "5"
       SECURITY_LOGINRESETTIMEMINUTES: "120"
       SECURITY_XFRAMEOPTIONS: "DENY"
-      # --- AI / telemetry / risky features OFF (needs explicit approval to change) ---
-      AIENGINE_ENABLED: "false"
+      # --- AI Engine: ON (approved by owner 2026-11-09) ---
+      # Chat model = gemma4:cloud via host Ollama -> runs on Ollama Cloud (prompts/document text leave this server).
+      # Embeddings = nomic-embed-text, runs locally in Ollama.
+      AIENGINE_ENABLED: "true"
+      AIENGINE_MODE: "SELF_HOSTED"
+      AIENGINE_URL: "http://stirling-pdf-engine:5001"
+      STIRLING_ENGINE_SHARED_SECRET: ${PDFIN_ENGINE_SECRET:?set in Dokploy env}
+      AIENGINE_MODELS_PROVIDER: "ollama"
+      AIENGINE_MODELS_SMARTMODEL: ${PDFIN_AI_MODEL:-gemma4:cloud}
+      AIENGINE_MODELS_FASTMODEL: ${PDFIN_AI_MODEL:-gemma4:cloud}
+      AIENGINE_MODELS_BASEURL: "http://host.docker.internal:11434/v1"
+      AIENGINE_RAG_EMBEDDINGPROVIDER: "ollama"
+      AIENGINE_RAG_EMBEDDINGMODEL: "nomic-embed-text"
+      AIENGINE_RAG_EMBEDDINGBASEURL: "http://host.docker.internal:11434/v1"
+      # --- telemetry / risky features OFF ---
       SYSTEM_ENABLEANALYTICS: "false"
       SYSTEM_ENABLEPOSTHOG: "false"
       SYSTEM_ENABLESCARF: "false"
@@ -54,6 +67,34 @@ services:
       timeout: 15s
       retries: 5
       start_period: 120s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - stirling-pdf-engine
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # Official AI engine (separate container, docs: Server/AI/Run-the-AI-Engine). Internal only, port 5001 not published.
+  stirling-pdf-engine:
+    image: ghcr.io/stirling-tools/stirling-engine:${STIRLING_VERSION:-3.3.0}
+    restart: unless-stopped
+    expose:
+      - "5001"
+    environment:
+      STIRLING_ENGINE_SHARED_SECRET: ${PDFIN_ENGINE_SECRET:?set in Dokploy env}
+      STIRLING_ENGINE_WORKERS: "2"
+      STIRLING_POSTHOG_ENABLED: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - pdfin-engine-data:/app/engine/data   # SQLite RAG index
+    mem_limit: 2g
+    cpus: 2.0
+    pids_limit: 512
+    stop_grace_period: 30s
     logging:
       driver: json-file
       options:
@@ -61,6 +102,7 @@ services:
         max-file: "5"
 
 volumes:
+  pdfin-engine-data:
   pdfin-configs:
   pdfin-storage:
   pdfin-logs:
