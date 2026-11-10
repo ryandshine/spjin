@@ -47,6 +47,12 @@ Bawaan image: eng, deu, fra, por, chi_sim. Ditambahkan 2026-11-09: **ind** (`ind
 disimpan di volume `pdfin-tessdata` (`/usr/share/tessdata`) dan otomatis disalin ke folder Tesseract setiap container start.
 Menambah bahasa lain: `docker cp <lang>.traineddata <container>:/usr/share/tessdata/`, lalu restart container.
 
+## 5c. Login
+**OFF** sejak 2026-11-10 (keputusan pemilik): akses publik tanpa akun. Siapa pun yang bisa membuka URL dapat memakai PDFin;
+penyimpanan file di server dan halaman admin nonaktif. Uji: `PDFIN_NO_LOGIN=1 tests/functional-test.sh https://pdfin.ditpps.com`.
+Pengaman opsional tanpa password PDFin: Cloudflare Access (OTP email) di depan `pdfin.ditpps.com`.
+Mengaktifkan lagi login: `SECURITY_ENABLELOGIN: "true"` lalu Deploy (akun admin lama masih ada di DB).
+
 ## 6. Pemeliharaan rutin
 - Bulanan: cek rilis & update; uji restore ke project uji terpisah tiap kuartal.
 - Pantau `docker stats`, log gagal login `/logs/invalid-auths.log` (bisa dipakai Fail2Ban).

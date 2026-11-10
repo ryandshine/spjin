@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PDFin functional test — usage: tests/functional-test.sh <BASE_URL> [env-file]
 # Reads PDFIN_ADMIN_USERNAME / PDFIN_ADMIN_PASSWORD from env-file (default ../.env). Never prints secrets.
+# Login disabled? run with PDFIN_NO_LOGIN=1
 set -uo pipefail
 BASE="${1:?base url, e.g. https://pdfin.ditpps.com}"
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -16,27 +17,34 @@ ko(){ echo "FAIL  $*"; fail=$((fail+1)); }
 # 0. health (public, no secret)
 s=$(curl -fsS --max-time 15 "$BASE/api/v1/info/status") && ok "health: $s" || ko "health"
 
-# 1. anonymous access must be rejected
-c=$(curl -s -o /dev/null -w '%{http_code}' -X POST -F "fileInput=@$FX/one.pdf" -F optimizeLevel=2 -F grayscale=false -F linearize=false -F normalize=false "$BASE/api/v1/misc/compress-pdf")
-[[ "$c" == 401 || "$c" == 403 ]] && ok "anonymous API rejected ($c)" || ko "anonymous API returned $c"
-c=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/v1/user/users")
-[[ "$c" == 401 || "$c" == 403 ]] && ok "anonymous admin endpoint rejected ($c)" || ko "anonymous admin endpoint returned $c"
+if [[ "${PDFIN_NO_LOGIN:-0}" == 1 ]]; then
+  # Login disabled by design: anonymous use must WORK.
+  AUTH=()
+  c=$(curl -s -o /dev/null -w '%{http_code}' -X POST -F "fileInput=@$FX/one.pdf" -F optimizeLevel=2 -F grayscale=false -F linearize=false -F normalize=false "$BASE/api/v1/misc/compress-pdf")
+  [[ "$c" == 200 ]] && ok "anonymous use allowed (login off) ($c)" || ko "anonymous use returned $c"
+else
+  # 1. anonymous access must be rejected
+  c=$(curl -s -o /dev/null -w '%{http_code}' -X POST -F "fileInput=@$FX/one.pdf" -F optimizeLevel=2 -F grayscale=false -F linearize=false -F normalize=false "$BASE/api/v1/misc/compress-pdf")
+  [[ "$c" == 401 || "$c" == 403 ]] && ok "anonymous API rejected ($c)" || ko "anonymous API returned $c"
+  c=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/v1/user/users")
+  [[ "$c" == 401 || "$c" == 403 ]] && ok "anonymous admin endpoint rejected ($c)" || ko "anonymous admin endpoint returned $c"
 
-# 2. wrong password rejected (uses a throwaway username so the admin account is never locked)
-c=$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d '{"username":"nobody-test","password":"wrong-password"}' "$BASE/api/v1/auth/login")
-[[ "$c" == 401 || "$c" == 403 ]] && ok "bad credentials rejected ($c)" || ko "bad credentials returned $c"
+  # 2. wrong password rejected (uses a throwaway username so the admin account is never locked)
+  c=$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d '{"username":"nobody-test","password":"wrong-password"}' "$BASE/api/v1/auth/login")
+  [[ "$c" == 401 || "$c" == 403 ]] && ok "bad credentials rejected ($c)" || ko "bad credentials returned $c"
 
-# 3. login
-J=$(python3 -c 'import json,sys;print(json.dumps({"username":sys.argv[1],"password":sys.argv[2]}))' "$U" "$P")
-R=$(curl -s -H 'Content-Type: application/json' -d "$J" "$BASE/api/v1/auth/login")
-T=$(printf '%s' "$R" | python3 -c 'import json,sys
-d=json.load(sys.stdin)
-s=d.get("session") or {}
-print(d.get("access_token") or d.get("accessToken") or d.get("token") or s.get("access_token") or "")' 2>/dev/null)
-if [[ -n "$T" ]]; then ok "admin login (JWT issued)"; else ko "admin login: $(printf '%s' "$R" | head -c 200)"; exit 1; fi
-AUTH=(-H "Authorization: Bearer $T")
-c=$(curl -s -o "$OUT/me.json" -w '%{http_code}' "${AUTH[@]}" "$BASE/api/v1/auth/me")
-[[ "$c" == 200 ]] && ok "auth/me ($(python3 -c 'import json;d=json.load(open("'"$OUT/me.json"'"));u=d.get("user",d);print(u.get("username"),u.get("role") or u.get("roles") or "")' 2>/dev/null))" || ko "auth/me $c"
+  # 3. login
+  J=$(python3 -c 'import json,sys;print(json.dumps({"username":sys.argv[1],"password":sys.argv[2]}))' "$U" "$P")
+  R=$(curl -s -H 'Content-Type: application/json' -d "$J" "$BASE/api/v1/auth/login")
+  T=$(printf '%s' "$R" | python3 -c 'import json,sys
+  d=json.load(sys.stdin)
+  s=d.get("session") or {}
+  print(d.get("access_token") or d.get("accessToken") or d.get("token") or s.get("access_token") or "")' 2>/dev/null)
+  if [[ -n "$T" ]]; then ok "admin login (JWT issued)"; else ko "admin login: $(printf '%s' "$R" | head -c 200)"; exit 1; fi
+  AUTH=(-H "Authorization: Bearer $T")
+  c=$(curl -s -o "$OUT/me.json" -w '%{http_code}' "${AUTH[@]}" "$BASE/api/v1/auth/me")
+  [[ "$c" == 200 ]] && ok "auth/me ($(python3 -c 'import json;d=json.load(open("'"$OUT/me.json"'"));u=d.get("user",d);print(u.get("username"),u.get("role") or u.get("roles") or "")' 2>/dev/null))" || ko "auth/me $c"
+fi
 
 pages(){ pdfinfo "$1" 2>/dev/null | awk '/^Pages:/{print $2}'; }
 run(){ # name endpoint outfile curl-args...
